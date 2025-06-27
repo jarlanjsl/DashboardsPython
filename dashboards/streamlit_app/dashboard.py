@@ -73,7 +73,9 @@ st.subheader(f"📈 Séries Temporais por Bairro: {bairro_selecionado}")
 col1, col2 = st.columns(2)
 
 with col1:
+    st.subheader("Casos")
     st.line_chart(df_casos[bairro_selecionado])
 
 with col2:
+    st.subheader("Óbitos")
     st.line_chart(df_obitos[bairro_selecionado])
