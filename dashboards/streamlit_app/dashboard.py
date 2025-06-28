@@ -5,6 +5,7 @@ from shapely.geometry import Polygon
 import ast
 import folium
 from streamlit_folium import folium_static
+import plotly.express as px
 
 st.set_page_config(layout="wide")
 st.title("📊 Dashboard de Saúde por Bairro - Fortaleza")
@@ -35,7 +36,7 @@ df_obitos = load_series_temporais("../../datasets/SERIES_OBITOS_BAIRRO.csv")
 
 # --- Seletor de bairro e data ---
 bairro_selecionado = st.selectbox("Selecione um bairro:", sorted(gdf_bairros['NM_BAIRRO'].unique()))
-data_selecionada = st.date_input("Selecione uma data:", df_casos.index.max())
+data_selecionada = st.date_input("Selecione uma data:", min_value=df_casos.index.min(), max_value=df_casos.index.max())
 
 # --- Métricas principais ---
 col1, col2 = st.columns(2)
@@ -48,7 +49,7 @@ col2.metric("Óbitos no dia", int(obitos_dia))
 # --- Mapa interativo dos bairros ---
 st.subheader("🗺️ Mapa dos Bairros de Fortaleza")
 
-mapa = folium.Map(location=[-3.75, -38.54], zoom_start=11, tiles='cartodbpositron')
+mapa = folium.Map(location=[-3.75, -38.54], zoom_start=12)
 
 for _, row in gdf_bairros.iterrows():
     nome = row['NM_BAIRRO']
@@ -56,7 +57,9 @@ for _, row in gdf_bairros.iterrows():
     <b>Bairro:</b> {nome}<br>
     <b>População:</b> {row.get('POP', 'N/A')}<br>
     <b>Área (km²):</b> {row.get('ARE', 'N/A')}<br>
-    <b>Incidência:</b> {row.get('INC', 'N/A')}
+    <b>Incidência:</b> {row.get('INC', 'N/A')}<br>
+    <b>Casos no dia:</b> {df_casos.loc[data_selecionada, nome]}<br>
+    <b>Óbitos no dia:</b> {df_obitos.loc[data_selecionada, nome]}
     """
     folium.GeoJson(
         row['geometry'],
@@ -79,3 +82,28 @@ with col1:
 with col2:
     st.subheader("Óbitos")
     st.line_chart(df_obitos[bairro_selecionado])
+
+# --- Gráficos temporais de Fortaleza ---
+# --- Seletor de Opções ---
+st.subheader("📈 Séries Temporais de Fortaleza")
+selected_option = st.radio(
+    "Selecione o que deseja visualizar:",
+    ("Casos", "Óbitos", "Ambos")
+)
+
+# --- Lógica para Plotar o Gráfico com base na seleção ---
+if selected_option == "Casos":
+    # Cria um DataFrame apenas com a série de "Casos" para plotar
+    chart_data_filtered = pd.DataFrame({"Casos": df_casos.sum(axis=1)})
+    st.line_chart(chart_data_filtered)
+elif selected_option == "Óbitos":
+    # Cria um DataFrame apenas com a série de "Óbitos" para plotar
+    chart_data_filtered = pd.DataFrame({"Óbitos": df_obitos.sum(axis=1)})
+    st.line_chart(chart_data_filtered)
+else: # selected_option == "Ambos"
+    # Cria um DataFrame com ambas as séries
+    chart_data_filtered = pd.DataFrame({
+        "Casos": df_casos.sum(axis=1),
+        "Óbitos": df_obitos.sum(axis=1),
+    })
+    st.line_chart(chart_data_filtered)
